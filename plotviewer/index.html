@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>船舶轴线运动在线检测系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Loading Bootstrap -->
+    <link href="./css/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Loading Flat UI -->
+    <link href="./css/flat-ui.min.css" rel="stylesheet">
+    <link href="./css/site.css" rel="stylesheet">
+
+    <link rel="shortcut icon" href="img/favicon.ico">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+    <!--[if lt IE 9]>
+      <script src="js/vendor/html5shiv.js"></script>
+      <script src="js/vendor/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-12">
+          <nav class="navbar navbar-inverse navbar-embossed" role="navigation">
+            <div class="collapse navbar-collapse" id="navbar-collapse-01">
+              <ul class="nav navbar-nav navbar-left">
+                <li class="dropdown">
+                  <a href="javascript:" class="dropdown-toggle" data-toggle="dropdown">文件 <b class="caret"></b></a>
+                  <span class="dropdown-arrow"></span>
+                  <ul class="dropdown-menu">
+                    <li><a id="btn-filenew" href="javascript:">新建</a></li>
+                    <li><a id="btn-fileopen" href="javascript:">打开</a></li>
+                    <li><a id="btn-filesave" href="javascript:">保存</a></li>
+                    <li class="divider"></li>
+                    <li><a href="javascript:close()">退出</a></li>
+                  </ul>
+                </li>
+                <li class="dropdown">
+                  <a href="javascript:" class="dropdown-toggle" data-toggle="dropdown">编辑 <b class="caret"></b></a>
+                  <span class="dropdown-arrow"></span>
+                  <ul class="dropdown-menu">
+                    <li><a href="javascript:" id="btn-editpoints">编辑测量点 </a></li>
+                    <li class="divider"></li>
+                    <li><a href="javascript:">参数调整</a></li>
+                  </ul>
+                </li>
+                <li><a href="javascript:" id="btn-about">关于</a></li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+      </div>
+      <div class="row">
+        <div class="menubar hideact" id="config-holder">
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col-md-12 my-points-config-holder">
+                <div class="container-fluid my-points-config">
+                  <div class="row-fluid">
+                    <div class="col-md-4">
+                      <h6 class="header">编辑测量点</h6>
+                    </div>
+                    <div class="col-md-7"></div>
+                    <div class="col-md-1">
+                      <button id="btn-editpoints-close" class="btn btn-primary">
+                      <span class="fui-cross"></span></button>
+                    </div>
+                    <div class="col-md-12">
+                      <canvas width="914px" height="200px" id="points-config"></canvas>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <input id="point-distance" type="text" value="" placeholder="距离" class="form-control">
+                        <label class="login-field-icon" for="point-distance">m</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="btn-group">
+                        <button id="btn-newpoint" class="btn btn btn-primary">
+                        <span class="fui-plus"></span> 新建</button>
+                        <button id="btn-unselpoint" class="btn btn btn-info disabled">
+                        <span class="fui-cross"></span> 取消选择</button>
+                        <button id="btn-removepoint" class="btn btn btn-danger disabled">
+                        <span class="fui-cross"></span> 删除</button>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="form-group">
+                        <input type="text" class="form-control" placeholder="轴长" id="point-length">
+                        <label class="login-field-icon" for="point-distance">m</label>
+                      </div>
+                    </div>
+                    <div class="col-md-1">
+                      <button id="btn-setlength" class="btn btn btn-primary">设置</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <h6 class="header">测量面1</h6>
+          <div class="plot2 row-fluid">
+            <canvas id="xy1" width="300px" height="300px"></canvas>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <h6 class="header">测量面2</h6>
+          <div class="plot2 row-fluid">
+            <canvas id="xy2" width="300px" height="300px"></canvas>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <h6 class="header">测量面3</h6>
+          <div class="plot2 row-fluid">
+            <canvas id="xy3" width="300px" height="300px"></canvas>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <h6 class="header">控制</h6>
+          <div class="ctl-pl row-fluid">
+            <button id="btn-start" class="btn btn-large btn-block btn-primary">开始采样</button>
+            <button id="btn-hidenum" class="btn btn-large btn-block btn-info">隐藏数值</button>
+            <button id="btn-save" class="btn btn-large btn-block btn-inverse">保存数据</button>
+          </div>
+        </div>
+        <div class="col-md-8 plot-ctl">
+          <h6 class="header">z (mm)</h6>
+          <div id="z" class="plot row-fluid">
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- jQuery (necessary for Flat UI's JavaScript plugins) -->
+    <script>window.$ = window.jQuery = require("./js/jquery-1.12.3.min.js");</script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <!-- <script src="./js/vendor/video.js"></script> -->
+    <script src="./js/flat-ui.min.js"></script>
+    <script src="./js/jquery.flot.min.js"></script>
+    <script src="./js/ocanvas-2.8.4.min.js"></script>
+    <script src="./js/site.js"></script>
+  </body>
+</html>
