@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>船舶轴线运动在线检测系统</title>
+    <title>船舶轴系校中校中校核软件</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- Loading Bootstrap -->
@@ -44,23 +44,23 @@
                   <ul class="dropdown-menu">
                     <li><a href="javascript:" id="btn-editpoints">编辑测量点 </a></li>
                     <li class="divider"></li>
-                    <li><a href="javascript:">参数调整</a></li>
+                    <li><a href="javascript:" id="btn-editprop">参数调整</a></li>
                   </ul>
                 </li>
-                <li><a href="javascript:" id="btn-process">后处理</a></li>
                 <li><a href="javascript:" id="btn-about">关于</a></li>
               </ul>
             </div>
           </nav>
         </div>
       </div>
+      <!-- 弹出 -->
       <div class="row">
         <div class="menubar hideact" id="config-holder" style="display: none;">
           <div class="container-fluid">
             <div class="row">
               <div class="col-md-12 my-points-config-holder">
                 <div class="container-fluid my-points-config">
-                  <div class="row-fluid">
+                  <div class="row">
                     <div class="col-md-4">
                       <h6 class="header">编辑测量点</h6>
                     </div>
@@ -103,29 +103,33 @@
             </div>
           </div>
         </div>
-        <div class="menubar hideact" id="process-holder" style="display: none;">
+        <div class="menubar hideact" id="prop-holder" style="display: none;">
           <div class="container-fluid">
             <div class="row">
               <div class="col-md-12 my-points-config-holder">
                 <div class="container-fluid my-points-config">
                   <div class="row">
                     <div class="col-md-4">
-                      <h6 class="header">测量面1(后处理)</h6>
-                      <div class="plot2 row-fluid">
-                        <canvas id="pxy1" width="300px" height="300px"></canvas>
-                      </div>
+                      <h6 class="header">编辑参数</h6>
+                    </div>
+                    <div class="col-md-7"></div>
+                    <div class="col-md-1">
+                      <button id="btn-editprop-close" class="btn btn-primary">
+                      <span class="fui-cross"></span></button>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-2">
+                      <label>顶举系数 <span id="lbl-showprop">1</span></label>
                     </div>
                     <div class="col-md-4">
-                      <h6 class="header">测量面2(后处理)</h6>
-                      <div class="plot2 row-fluid">
-                        <canvas id="pxy2" width="300px" height="300px"></canvas>
+                      <div class="form-group">
+                        <input id="point-prop" type="text" value="" placeholder="顶举系数" class="form-control">
+                        <label class="login-field-icon" for="point-prop"></label>
                       </div>
                     </div>
-                    <div class="col-md-4">
-                      <h6 class="header">测量面3(后处理)</h6>
-                      <div class="plot2 row-fluid">
-                        <canvas id="pxy3" width="300px" height="300px"></canvas>
-                      </div>
+                    <div class="col-md-2">
+                      <button id="btn-setprop" class="btn btn-block btn-primary">设置</button>
                     </div>
                   </div>
                 </div>
@@ -133,35 +137,39 @@
             </div>
           </div>
         </div>
-        <div class="col-md-4">
-          <h6 class="header">测量面1</h6>
-          <div class="plot2 row-fluid">
-            <canvas id="xy1" width="300px" height="300px"></canvas>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <h6 class="header">测量面2</h6>
-          <div class="plot2 row-fluid">
-            <canvas id="xy2" width="300px" height="300px"></canvas>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <h6 class="header">测量面3</h6>
-          <div class="plot2 row-fluid">
-            <canvas id="xy3" width="300px" height="300px"></canvas>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <h6 class="header">控制</h6>
-          <div class="ctl-pl row-fluid">
-            <button id="btn-start" class="btn btn-large btn-block btn-primary">开始采样</button>
-            <button id="btn-hidenum" class="btn btn-large btn-block btn-info">隐藏数值</button>
-            <button id="btn-save" class="btn btn-large btn-block btn-inverse">保存数据</button>
-          </div>
-        </div>
-        <div class="col-md-8 plot-ctl">
-          <h6 class="header">z (mm)</h6>
-          <div id="z" class="plot row-fluid">
+      </div>
+      <div class="row">
+        <!-- 主体 -->
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-md-6">
+              <h6 class="header">测量点负荷(t)</h6>
+              <div id="x" class="plot">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <h6 class="header">测量点位移(mm)</h6>
+              <div id="y" class="plot">
+              </div>
+            </div>
+            <div class="col-md-4 plot-ctl">
+              <h6 class="header">控制</h6>
+              <div class="ctl-pl">
+                <button id="btn-start" class="btn btn-large btn-block btn-primary">开始采样</button>
+                <button id="btn-clear" class="btn btn-large btn-block btn-info">清空数据</button>
+                <button id="btn-save" class="btn btn-large btn-block btn-inverse">保存数据</button>
+              </div>
+              <p></p>
+              <p>采样数据 <span id="lbl-data-count">-</span></p>
+              <p>采样时间 <span id="lbl-data-time">-</span></p>
+              <p>计算结果 <span id="lbl-data-result">-</span></p>
+              <p>实际负荷 <span id="lbl-data-result2">-</span></p>
+            </div>
+            <div class="col-md-8">
+              <h6 class="header">顶举曲线</h6>
+              <div id="z" class="plot">
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -175,6 +183,8 @@
     <script src="./js/flat-ui.min.js"></script>
     <script src="./js/jquery.flot.min.js"></script>
     <script src="./js/ocanvas-2.8.4.min.js"></script>
+    <script src="./js/numeric-1.2.6.min.js"></script>
+    <script src="./js/echarts.common.min.js"></script>
     <script src="./js/site.js"></script>
   </body>
 </html>

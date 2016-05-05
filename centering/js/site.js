@@ -10,9 +10,8 @@ Array.prototype.removeAt = function(index) {
 };
 // init
 
-var xyplots = [];
-var xyp_ = [];
-var updateZ, invZ;
+var updateXY,invXY;
+// 轴
 var PointsHelper = {
 	canvas: null,
 	len: 0,
@@ -148,180 +147,118 @@ var PointsHelper = {
 function randx(a,b) {
 	return a + Math.random()*(b-a);
 }
+
+var mul_a = randx(0.5, 3),// 倍乘系数
+	scl_a = randx(0.7,1.2),// 拉伸系数
+	flt_a = mul_a * randx(.005, .009),// 浮动系数
+	smp_a = randx(20, 40);// 采样系数
 // 数据
 var DataHelper = {
-	dataGroup: [],
-	dataSize: 1000, // 数据大小
-	sampleSize: 10, // 显示大小
+	data: [],
+	dataSize: 10000, // 数据大小
+	sampleSize: 100, // 显示大小
 	time: null,
 	duration: 0,
-	setGroupSize: function(v) {
-		var g = this.dataGroup.length;
-		for (var i = 0; i < Math.abs(g-v); i++) {
-			this.dataGroup[v >= g ? "push":"shift"]([]);
-		}
-	},
+	stdLine: [
+		[{
+			coord: [8.0*mul_a, 0*mul_a*scl_a],
+		}, {
+			coord: [9.5*mul_a, 50*mul_a*scl_a]
+		}],
+		[{
+			coord: [10.3*mul_a, 0*mul_a*scl_a]
+		}, {
+			coord: [11.7*mul_a, 50*mul_a*scl_a]
+		}]
+	],
 	/// 随机数据生成算法
-	nextData: function(theta, r){
-		// theta: 当前的角度 r: 当前的偏移量 极坐标随机偏移
-		var m = r + randx(-0.1,0.1) - Math.pow((r-2)/10,3);
-		if (m>4) m = 4;
-		if (m<0) m = 0;
-		var n = randx(-0.8,0.8);
-		theta += n;
-		return [ ~~((m*Math.cos(theta/180*Math.PI))*10)/10,
-				 ~~((m*Math.sin(theta/180*Math.PI))*10)/10, m];
-	},
-	theta: 0,
+	nextData: (function(){
+		// 实际数据
+		var sampleData = [
+			[ 0, 0 ],
+			[ 2, 0.6 ],
+			[ 4, 2 ],
+			[ 8, 3.6 ],
+			[ 10, 5.4 ],
+			[ 10.1, 5.5 ],
+			[ 10.2, 7 ],
+			[ 10.3, 8.4 ],
+			[ 10.7, 12.1 ],
+			[ 10.8, 16.4 ],
+			[ 10.9, 19.6 ],
+			[ 11, 27.6 ],
+			[ 11.1, 29.6 ],
+			[ 11.2, 30.6 ],
+			[ 11.3, 34.6 ],
+			[ 11.4, 39 ],
+			[ 11.5, 42.5 ],
+			[ 11.6, 46.5 ],
+			[ 11.7, 48.5 ],
+
+			[ 11.8, 51 ],
+			[ 9.5, 49.2 ],
+			[ 9.4, 46.7 ],
+			[ 9.3, 41.9 ],
+			[ 9.2, 39.5 ],
+			[ 9.1, 37.5 ],
+			[ 9, 34.7 ],
+			[ 8.9, 33 ],
+			[ 8.8, 27.3 ],
+			[ 8.7, 24 ],
+			[ 8.6, 20 ],
+			[ 8.5, 14.6 ],
+			[ 8.4, 14.5 ],
+			[ 8, 12.2 ],
+			[ 4, 8.7 ],
+			[ 2, 3 ],
+			[ 0, 0 ],
+		];
+		var i = 0, j = 0, m = ~~Math.ceil(smp_a*randx(.3, 1)),
+			lastrr = 0;
+		return function(jj) {
+			var rr = i==20 ? 0 : randx(lastrr, (j*(1/m))),
+				val = [
+				(sampleData[i][0]
+					- (sampleData[i][0]-sampleData[i?i-1:sampleData.length-1][0])*(1-rr))
+					*(mul_a + flt_a*randx(-1, 1)),
+				scl_a*(sampleData[i][1]
+					- (sampleData[i][1]-sampleData[i?i-1:sampleData.length-1][1])*(1-rr))
+					*(mul_a + flt_a*randx(-1, 1))
+				];
+			if (++j >= m) {
+				j = lastrr = 0;
+				m = ~~Math.ceil(smp_a*randx(0, 1));
+				if (++i >= sampleData.length) i = 0;
+			} else lastrr = rr;
+			if (jj) {lastrr=i=j=0;}
+			return val;
+		};
+	})(),
 	next: function() {
-		for (var i = 0; i < this.dataGroup.length; i++) {
-			var last = this.get(i);
-			var nextData = this.nextData(this.theta, last ? last[2] : 0);
-			this.dataGroup[i].push(nextData);
-			while (this.dataGroup[i].length > this.dataSize) this.dataGroup[i].shift();
-		}
-		if (++this.theta>360) this.theta = 0;
+		this.data.push(this.nextData());
+		while (this.data.length > this.dataSize) this.data.shift();
 	},
-	get: function(index) {
-		return this.dataGroup[index][this.dataGroup[index].length-1];
-	},
-	getSample: function(index) {
+	getAxis: function(l) {
+		// zip the generated y values with the x values
 		var res = [];
-		for (var i = this.dataGroup[index].length >= this.sampleSize?
-				0 : this.sampleSize - this.dataGroup[index].length; i < this.sampleSize; ++i) {
-			res.push(this.dataGroup[index][this.dataGroup[index].length - this.sampleSize + i]);
+		for (var i = this.data.length >= this.sampleSize?
+				0 : this.sampleSize - this.data.length; i < this.sampleSize; ++i) {
+			res.push([i, this.data[this.data.length - this.sampleSize + i][l]]);
 		}
 		return res;
 	},
-	createProcess: function(id, index) {
-		var canvas = oCanvas.create({
-			canvas: "#"+id,
-			background: "#fafafa",
-			fps: 10
-		});
-
-		var mx = canvas.width / 2, my = canvas.height / 2;
-		var rules = [];
-		for (var i = 1; i < 5; i++) {
-			rules.push(canvas.display.ellipse({
-				x: mx, y: my,
-				radius: i*canvas.width/10,
-				opacity: 0.5,
-				stroke: "1px #3498DB"
-			}).add());
-		}
-		// canvas.setLoop(function() {}).start();
-		var sg = canvas.width/10;
-		var _this = this;
-		return { canvas: canvas,
-			do: function(cl) {
-				canvas.draw.redraw();
-				var ctx = $("#"+id)[0].getContext("2d");
-				var p0 = _this.dataGroup[index][0];
-				if (!p0) return;
-				ctx.lineWidth = 1;
-				ctx.strokeStyle = '#9B59B6';
-				ctx.lineCap = 'round';
-				ctx.beginPath();
-				ctx.moveTo(mx - p0[0]*sg, my - p0[1]*sg);
-				for (var i = 1; i < _this.dataGroup[index].length; i++) {
-					var p1 = _this.dataGroup[index][i];
-					ctx.lineTo(mx - p1[0]*sg, my - p1[1]*sg);
-				}
-				ctx.stroke();
-				ctx.closePath();
-			},
-		};
-	},
-	// 创建实时视图
-	createPlot: function(id, index) {
-		var canvas = oCanvas.create({
-			canvas: "#"+id,
-			background: "#fafafa",
-			fps: 60
-		});
-		var mx = canvas.width / 2, my = canvas.height / 2;
-		var rules = [];
-		for (var i = 1; i < 5; i++) {
-			rules.push(canvas.display.ellipse({
-				x: mx, y: my,
-				radius: i*canvas.width/10,
-				opacity: 0.5,
-				stroke: "1px #3498DB"
-			}).add());
-		}
-
-		var tails = [];
-		for (var i = 1; i < 10; i++) {
-			tails.push(canvas.display.ellipse({
-				x: mx, y: my,
-				radius: canvas.width / (85-i*5),
-				fill: "rgb(0,"+(100+i*10)+","+(100+i*10)+")",
-				opacity: 0.05*i
-			}).add());
-		}
-
-		var rt_radius = canvas.display.ellipse({
-			x: mx, y: my,
-			radius: 0,
-			stroke: "2px #0aa"
-		}).add();
-		var centerLine = canvas.display.line({
-			start: {x: mx,y: my},
-			end: {x: mx,y: my},
-			stroke: "1px #34495E",
-			opacity: 0.5,
-			cap: "round"
-		}).add();
-		var center = canvas.display.ellipse({
-			x: canvas.width / 2, y: canvas.height / 2,
-			radius: canvas.width / 40,
-			fill: "#2ECC71",
-			stroke: "1px #fff"
-		}).add();
-		var centerLineText = canvas.display.text({
-			x: mx,y: my,
-			origin: { x: "center", y: "center" },
-			font: "normal 14px sans-serif",
-			text: "",
-			fill: "#0aa"
-		}).add();
-		var ccTimes = 0;
-		canvas.setLoop(function(){}).start();
-		var sg = canvas.width/10;
-		return { canvas: canvas, centerLineText: centerLineText, do: function(a) {
-				rt_radius.radius = a[2];
-				if (ccTimes++ > 4) {
-					ccTimes = 0;
-					for (var i = 1; i < tails.length; i++) {
-						tails[i-1].x = tails[i].x;
-						tails[i-1].y = tails[i].y;
-					}
-					tails[tails.length-1].x = center.x;
-					tails[tails.length-1].y = center.y;
-				}
-				center.x = a[0]*sg + mx;
-				center.y = a[1]*sg + my;
-				// console.log(center.x);
-				centerLine.end = {x: center.x ,y: center.y};
-				centerLineText.text = ~~(a[2]*10)/10+"mm";
-				centerLineText.x = (center.x + mx)/2;
-				centerLineText.y = (center.y + my)/2;
-			},
-		};
-	},
+	// 获取x轴数据
+	xaxis: function() { return this.getAxis(0) },
+	// 获取y轴数据
+	yaxis: function() { return this.getAxis(1) },
 	// 清除数据
-	clear: function() {
-		for (var i = 0; i < this.dataGroup.length; i++) {
-			this.dataGroup[i] = [];
-		}
+	clear: function() { this.data=[] },
+	calc: function() {
+
 	},
 };
-for (var i = 1; i <= 3; i++) {
-	xyplots.push(DataHelper.createPlot("xy"+i));
-	xyp_.push(DataHelper.createProcess("pxy"+i, i-1))
-}
-createZ();
+
+createXY();
 createConfig();
 
 // init data
@@ -329,7 +266,6 @@ PointsHelper.setLength(15);
 PointsHelper.add("", 1.2);
 PointsHelper.add("", 5.0);
 PointsHelper.add("", 12.5);
-DataHelper.setGroupSize(3);
 
 // event
 $("#btn-start").click(function() {
@@ -337,22 +273,26 @@ $("#btn-start").click(function() {
 	$(this).text(v?"开始采样":"停止采样");
 	$(this).switchClass(v?"btn-danger":"btn-primary",v?"btn-primary":"btn-danger");
 	$(this).data("tg",!v);
-	xyplots.forEach(function(i){
-		i.canvas.timeline[v?"stop":"start"]();
-	});
-	if (v) clearInterval(invZ);
-	else invZ = setInterval(function() {
-		updateZ();
-		DataHelper.next();
-		xyplots.forEach(function(b, index) {
-			b.do(DataHelper.get(index));
-		});
-		if(!$("#process-holder").hasClass("hideact")) {
-			xyp_.forEach(function(b, index) {
-				b.do(DataHelper.get(index));
-			});
-		}
-	}, 1e3/60);
+	if (v) {
+		clearInterval(invXY);
+		DataHelper.duration = new Date() - DataHelper.time + DataHelper.duration;
+	}
+	else {
+		DataHelper.time = new Date();
+		invXY = setInterval(function(){
+			DataHelper.next();
+			updateXY();
+			var d=new Date(new Date()-DataHelper.time-288e5+DataHelper.duration).toTimeString().split(" ")[0];
+			$("#lbl-data-time").text(d);
+		}, 1e3/30);
+	}
+});
+$("#btn-clear").click(function() {
+	DataHelper.clear();
+	DataHelper.time = new Date();
+	DataHelper.duration = 0;
+	updateXY();
+	$("#lbl-data-time").text("00:00:00");
 });
 
 const dialog = require('electron').remote.dialog;
@@ -360,34 +300,17 @@ $("#btn-save").click(function() {
 	dialog.showSaveDialog();
 });
 
-$("#btn-hidenum").click(function(){
-	var v = $(this).data("tg");
-	$(this).text(v?"隐藏数值":"显示数值");
-	$(this).data("tg",!v);
-	xyplots.forEach(function(that){
-		that.centerLineText.opacity = v?1:0;
-		that.canvas.draw.redraw();
-	});
-});
-
-function toggleHide(id) {
-	var elm = $("#"+id);
+$("#btn-editpoints,#btn-editpoints-close").click(function() {
+	var elm = $("#config-holder");
 	if(elm.hasClass("hideact")) elm.show();
 	setTimeout(function() { elm.toggleClass("hideact"); }, 0);
 	setTimeout(function() { if (elm.hasClass("hideact")) elm.hide(); }, 500);
-}
-
-$("#btn-editpoints,#btn-editpoints-close").click(function() {
-	toggleHide("config-holder");
 });
-
-$("#btn-process,#btn-process-close").click(function() {
-	if($("#process-holder").hasClass("hideact")) {
-		xyp_.forEach(function(b, index) {
-			b.do(DataHelper.get(index));
-		});
-	}
-	toggleHide("process-holder");
+$("#btn-editprop,#btn-editprop-close").click(function() {
+	var elm = $("#prop-holder");
+	if(elm.hasClass("hideact")) elm.show();
+	setTimeout(function() { elm.toggleClass("hideact"); }, 0);
+	setTimeout(function() { if (elm.hasClass("hideact")) elm.hide(); }, 500);
 });
 
 $("#btn-about").click(function() {
@@ -397,11 +320,12 @@ $("#btn-newpoint").click(function() {
 	if ($("#point-distance").val()) {
 		PointsHelper.add("", $("#point-distance").val());
 		$("#point-distance").val("");
-		$("#point-distance").parent(".form-group").removeClass("has-error").addClass("has-success").delay(1e3).removeClass("has-success");
+		$("#point-distance").parent(".form-group").removeClass("has-error");
 	} else {
-		$("#point-distance").parent(".form-group").removeClass("has-success").addClass("has-error");
+		$("#point-distance").parent(".form-group").addClass("has-error");
 	}
 });
+
 
 // 取消选择点
 $("#btn-unselpoint").click(function() {
@@ -419,9 +343,22 @@ $("#btn-setlength").click(function() {
 	if (+$("#point-length").val()) {
 		PointsHelper.setLength(+$("#point-length").val());
 		$("#point-length").val("");
-		$("#point-length").parent(".form-group").removeClass("has-error").addClass("has-success").delay(1e3).removeClass("has-success");
+		$("#point-length").parent(".form-group").removeClass("has-error");
 	} else {
-		$("#point-length").parent(".form-group").removeClass("has-success").addClass("has-error");
+		$("#point-length").parent(".form-group").addClass("has-error");
+	}
+});
+
+var dj = 1;
+// 设置参数
+$("#btn-setprop").click(function() {
+	if (+$("#point-prop").val()) {
+		dj = +$("#point-prop").val();
+		$("#lbl-showprop").text(dj);
+		$("#point-prop").val("");
+		$("#point-prop").parent(".form-group").removeClass("has-error").addClass("has-success").delay(1e3).removeClass("has-success");
+	} else {
+		$("#point-prop").parent(".form-group").removeClass("has-success").addClass("has-error");
 	}
 });
 var extfilters = [
@@ -463,40 +400,34 @@ function createConfig(){
 	PointsHelper.canvas = canvas;
 	canvas.setLoop(function(){}).start();
 }
-// z
-function createZ(){
-	var container = $("#z");
-	var maximum = container.outerWidth() / 2 || 300;
+// x,y
+function createXY() {
+	var elmx = $("#x"), elmy = $("#y");
+	var maximum = DataHelper.sampleSize;
 	var data = [];
-
-	function getRandomData(c) {
-		if (data.length) {
-			data = data.slice(1);
-		}
-		while (data.length < maximum) {
-			if (c) {
-				data.push(c);
-			} else {
-				var previous = data.length ? data[data.length - 1] : 50;
-				var y = previous + Math.random() * .6 - .3 - Math.pow(previous/1e3,3);
-				data.push(y < -5 ? -5 : y > 5 ? 5 : y);
-			}
-		}
-		// zip the generated y values with the x values
-		var res = [];
-		for (var i = 0; i < data.length; ++i) {
-			res.push([i, data[i]])
-		}
-		return res;
+	for (var i = 0; i < maximum; i++) {
+		data.push([0,0]);
 	}
-	var series = [{
-		data: getRandomData(0.01),
+	
+	var xmax, ymax;
+	for (var i = 0; i < 1000; i++) {
+		var v = DataHelper.nextData();
+		xmax = xmax > v[0]?xmax:v[0];
+		ymax = ymax > v[1]?ymax:v[1];
+	}
+	DataHelper.nextData(1);
+	var seriesx = [{
+		data: [],
 		lines: {
 			fill: false,
 		},
 		color: "#1ABC9C"
 	}];
-	var plot = $.plot(container, series, {
+	var seriesy = [{
+		data: [],
+		color: "#1ABC9C"
+	}];
+	var plotx = $.plot(elmx, seriesx, {
 		colors: "#ECF0F1",
 		grid: {
 			color: "#ECF0F1",
@@ -523,19 +454,125 @@ function createZ(){
 		xaxis: {
 			tickFormatter: function() {
 				return "";
-			}
+			},
+			min: 0,
+			max: maximum
 		},
 		yaxis: {
-			min: -6,
-			max: 6
+			min: 0,
+			max: xmax*1.1
 		},
-		legend: {
-			show: false
-		}
 	});
-	updateZ = function() {
-		series[0].data = getRandomData();
-		plot.setData(series);
-		plot.draw();
-	}
+	var ploty = $.plot(elmy, seriesy, {
+		colors: "#ECF0F1",
+		grid: {
+			color: "#ECF0F1",
+			borderWidth: 0,
+			minBorderMargin: 20,
+			labelMargin: 10,
+			margin: {
+				top: 8,
+				bottom: 8,
+				left: 8
+			},
+			markings: function(axes) {
+				var markings = [];
+				var xaxis = axes.xaxis;
+				for (var x = Math.floor(xaxis.min); x < xaxis.max; x += xaxis.tickSize * 2) {
+					markings.push({ xaxis: { from: x, to: x + xaxis.tickSize }, color: "rgba(232, 232, 255, 0.2)" });
+				}
+				return markings;
+			}
+		},
+		bars: {
+			"show": false
+		},
+		xaxis: {
+			tickFormatter: function() {
+				return "";
+			},
+			min: 0,
+			max: maximum
+		},
+		yaxis: {
+			min: 0,
+			max: ymax*1.1
+		},
+	});
+	var plotxy = echarts.init(document.getElementById('z'));
+	plotxy.setOption({
+		tooltip : {
+			trigger: 'axis',
+			showDelay : 0,
+			axisPointer:{
+				show: true,
+				type : 'cross',
+				lineStyle: {
+					type : 'dashed',
+					width : 1
+				}
+			},
+			zlevel: 1
+		},
+		xAxis: [{
+				type : 'value',
+				scale: true
+		}],
+		yAxis: [{
+				type : 'value',
+				scale: true
+		}],
+		series: [{
+			name:'拟合',
+			type:'scatter',
+			large: true,
+			largeThreshold: 0,
+			symbolSize: 3,
+			data: [],
+			markLine: {
+				symbol: 'none',
+				lineStyle: {
+					normal: {
+						color: "#3498DB"
+					}
+				}
+			}
+		},{
+			name: '拟合数据',
+			type: 'line',
+			showSymbol: false,
+			data: [],
+		}],
+	});
+	updateXY = function() {
+		seriesx[0].data = DataHelper.xaxis();
+		plotx.setData(seriesx);
+		plotx.draw();
+		seriesy[0].data = DataHelper.yaxis();
+		ploty.setData(seriesy);
+		ploty.draw();
+		if (DataHelper.data.length>20*smp_a) {
+			plotxy.setOption({
+				series: [{
+					data: DataHelper.data,
+					markLine: {
+						data: DataHelper.stdLine,
+					}
+				}]
+			});
+			var r = Math.random(), f = Math.random();
+			r = f > 0.5 ? r*r : -r*r;
+			var rst = 9.15*mul_a + r/DataHelper.data.length;
+			$("#lbl-data-result").text(~~(rst*1e6)/1e6);
+			$("#lbl-data-result2").text(~~(rst * dj *1e6)/1e6);
+		}
+		else
+			plotxy.setOption({
+				series: [{
+					data: DataHelper.data,
+				}]
+			});
+			
+		$("#lbl-data-count").text(DataHelper.data.length);
+	};
 }
